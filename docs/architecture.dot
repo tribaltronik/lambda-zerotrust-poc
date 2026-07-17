@@ -1,0 +1,139 @@
+digraph architecture {
+    rankdir=TB;
+    fontname="Helvetica";
+    node [fontname="Helvetica", fontsize=11, style="filled,rounded", shape=box, margin="0.15,0.1"];
+    edge [fontname="Helvetica", fontsize=9, color="#555555"];
+    graph [fontname="Helvetica", fontsize=14, labelloc=t, labeljust=c, pad="0.4", nodesep=0.6, ranksep=0.8];
+
+    // ── Title ──
+    label="lambda-zerotrust-poc  |  Architecture\nZero-Trust Serverless REST API on AWS";
+    labeljust=l;
+
+    // ── External ──
+    subgraph cluster_external {
+        label="External";
+        style=dashed;
+        color="#aaaaaa";
+        bgcolor="#f8f8f8";
+
+        client [label="Client\n(cURL / App)", shape=tab, fillcolor="#E3F2FD"];
+    }
+
+    // ── CI/CD ──
+    subgraph cluster_cicd {
+        label="CI/CD Pipeline (GitHub Actions)";
+        style=rounded;
+        color="#2E7D32";
+        bgcolor="#E8F5E9";
+
+        github [label="GitHub Actions\nOIDC Token", fillcolor="#C8E6C9"];
+        tf_plan [label="terraform plan\n(PR gate)", fillcolor="#C8E6C9"];
+        tf_apply [label="terraform apply\n(manual approval)", fillcolor="#C8E6C9"];
+        scans [label="DevSecOps Scans\nBandit · pip-audit\nCheckov · gitleaks", fillcolor="#C8E6C9"];
+
+        github -> tf_plan -> tf_apply;
+        scans -> tf_plan [style=dashed, label="block\nmerge"];
+    }
+
+    // ── AWS ──
+    subgraph cluster_aws {
+        label="AWS (us-east-1)";
+        style=rounded;
+        color="#FF9900";
+        bgcolor="#FFF8E1";
+
+        // API Gateway
+        apigw [label="API Gateway\nREST API", fillcolor="#FFE0B2", shape=box];
+
+        // Authorizer
+        cognito [label="Cognito\nUser Pool\n(JWT Auth)", fillcolor="#FFCC80", shape=cylinder];
+
+        // Lambda functions
+        subgraph cluster_lambda {
+            label="Lambda Functions (Python 3.13)";
+            style=rounded;
+            color="#1565C0";
+            bgcolor="#E3F2FD";
+
+            list_fn [label="list_items\nGET /items", fillcolor="#BBDEFB"];
+            get_fn [label="get_item\nGET /items/{id}", fillcolor="#BBDEFB"];
+            create_fn [label="create_item\nPOST /items", fillcolor="#BBDEFB"];
+            update_fn [label="update_item\nPUT /items/{id}", fillcolor="#BBDEFB"];
+            delete_fn [label="delete_item\nDELETE /items/{id}", fillcolor="#BBDEFB"];
+        }
+
+        // DynamoDB
+        dynamodb [label="DynamoDB\n(on-demand)\nPK · SK", fillcolor="#C5CAE9", shape=cylinder];
+
+        // Observability
+        subgraph cluster_obs {
+            label="Observability";
+            style=rounded;
+            color="#6A1B9A";
+            bgcolor="#F3E5F5";
+
+            cloudwatch [label="CloudWatch\nLogs", fillcolor="#E1BEE7"];
+            xray [label="X-Ray\nTracing", fillcolor="#E1BEE7"];
+            metrics [label="CloudWatch\nMetrics\n(Powertools)", fillcolor="#E1BEE7"];
+        }
+
+        // IAM roles
+        subgraph cluster_iam {
+            label="IAM (Least Privilege)";
+            style=rounded;
+            color="#B71C1C";
+            bgcolor="#FFEBEE";
+
+            role_list [label="list-role\nScan, Query", fillcolor="#FFCDD2", shape=ellipse];
+            role_get [label="get-role\nGetItem", fillcolor="#FFCDD2", shape=ellipse];
+            role_create [label="create-role\nPutItem", fillcolor="#FFCDD2", shape=ellipse];
+            role_update [label="update-role\nUpdateItem", fillcolor="#FFCDD2", shape=ellipse];
+            role_delete [label="delete-role\nDeleteItem", fillcolor="#FFCDD2", shape=ellipse];
+        }
+
+        // OIDC
+        oidc [label="OIDC Provider\n(token.actions\n.githubusercontent.com)", fillcolor="#FFF9C4", shape=oval];
+        gh_role [label="GitHub Actions\nIAM Role\n(assume via OIDC)", fillcolor="#FFF9C4", shape=ellipse];
+    }
+
+    // ── Connections ──
+    client -> apigw [label="HTTPS", color="#1565C0", penwidth=1.5];
+    apigw -> cognito [label="validate JWT", style=dashed, color="#6A1B9A"];
+    apigw -> list_fn [label="GET /items", color="#1565C0"];
+    apigw -> get_fn [label="GET /items/{id}", color="#1565C0"];
+    apigw -> create_fn [label="POST /items", color="#1565C0"];
+    apigw -> update_fn [label="PUT /items/{id}", color="#1565C0"];
+    apigw -> delete_fn [label="DELETE /items/{id}", color="#1565C0"];
+
+    list_fn -> dynamodb [color="#3F51B5", penwidth=1.2];
+    get_fn -> dynamodb [color="#3F51B5", penwidth=1.2];
+    create_fn -> dynamodb [color="#3F51B5", penwidth=1.2];
+    update_fn -> dynamodb [color="#3F51B5", penwidth=1.2];
+    delete_fn -> dynamodb [color="#3F51B5", penwidth=1.2];
+
+    list_fn -> cloudwatch [style=dashed, color="#6A1B9A"];
+    list_fn -> xray [style=dashed, color="#6A1B9A"];
+    list_fn -> metrics [style=dashed, color="#6A1B9A"];
+
+    list_fn -> role_list [style=dotted, color="#B71C1C"];
+    get_fn -> role_get [style=dotted, color="#B71C1C"];
+    create_fn -> role_create [style=dotted, color="#B71C1C"];
+    update_fn -> role_update [style=dotted, color="#B71C1C"];
+    delete_fn -> role_delete [style=dotted, color="#B71C1C"];
+
+    role_list -> dynamodb [style=dotted, color="#B71C1C"];
+    role_get -> dynamodb [style=dotted, color="#B71C1C"];
+    role_create -> dynamodb [style=dotted, color="#B71C1C"];
+    role_update -> dynamodb [style=dotted, color="#B71C1C"];
+    role_delete -> dynamodb [style=dotted, color="#B71C1C"];
+
+    // CI/CD → AWS
+    oidc -> gh_role [label="federate", color="#2E7D32", style=dashed];
+    gh_role -> tf_apply [label="STS assume\n(short-lived creds)", color="#2E7D32", style=dashed];
+
+    // State backend
+    s3 [label="S3 Bucket\n(terraform state)", fillcolor="#B3E5FC", shape=cylinder];
+    lock_table [label="DynamoDB\n(state lock)", fillcolor="#B3E5FC", shape=cylinder];
+    tf_apply -> s3 [label="remote state", style=dashed, color="#2E7D32"];
+    s3 -> lock_table [style=dotted, color="#90A4AE"];
+}
