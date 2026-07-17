@@ -1,0 +1,31 @@
+services:
+  floci:
+    image: floci/floci:latest
+    container_name: floci
+    ports:
+      - "4566:4566"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - floci-data:/app/data
+    environment:
+      FLOCI_DEFAULT_REGION: us-east-1
+      FLOCI_DEFAULT_ACCOUNT_ID: "000000000000"
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+      # Lambda config (Python 3.13)
+      FLOCI_SERVICES_LAMBDA_DEFAULT_TIMEOUT_SECONDS: "10"
+      FLOCI_SERVICES_LAMBDA_DEFAULT_MEMORY_MB: "256"
+      FLOCI_SERVICES_LAMBDA_EPHEMERAL: "false"
+      # Services for this project
+      FLOCI_SERVICES_S3_ENABLED: "true"
+      FLOCI_SERVICES_DYNAMODB_ENABLED: "true"
+      FLOCI_SERVICES_LAMBDA_ENABLED: "true"
+      FLOCI_SERVICES_APIGATEWAY_ENABLED: "true"
+      FLOCI_SERVICES_IAM_ENABLED: "true"
+      FLOCI_SERVICES_COGNITO_ENABLED: "true"
+      FLOCI_SERVICES_LOGS_ENABLED: "true"
+      FLOCI_SERVICES_SECRETSMANAGER_ENABLED: "true"
+      # Dev convenience
+      FLOCI_SERVICES_IAM_SEED_DEPLOYER_PRINCIPAL: "true"
+volumes:
+  floci-data:
