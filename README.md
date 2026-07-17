@@ -1,4 +1,4 @@
-# lambda-zerotrust-poc
+# Lambda Zero-trust PoC
 
 Zero-trust serverless REST API on AWS — PoC demonstrating DevSecOps best practices, least-privilege IAM, and GitHub OIDC deployment with no long-lived credentials.
 
