@@ -26,7 +26,7 @@ resource "aws_lambda_function" "this" {
   tags = var.tags
 
   lifecycle {
-    ignore_changes = [tags, tags_all, source_code_hash]
+    ignore_changes = [tags, tags_all]
   }
 }
 

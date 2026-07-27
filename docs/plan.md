@@ -12,9 +12,9 @@
 - [x] Lambda Powertools integration (logs/metrics/tracing)
 
 ## Phase 2 — Application Code (1 day)
-- [ ] CRUD handlers (Python), input validation (pydantic)
-- [ ] Structured logging, X-Ray subsegments
-- [ ] Unit tests (pytest, moto for AWS mocks)
+- [x] CRUD handlers (Python), input validation (pydantic)
+- [x] Structured logging, X-Ray subsegments
+- [x] Unit tests (pytest, moto for AWS mocks)
 
 ## Phase 3 — DevSecOps Pipeline (1-1.5 day)
 - [ ] GH Actions: lint (ruff) + unit tests
