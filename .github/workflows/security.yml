@@ -60,7 +60,8 @@ jobs:
           cache: pip
 
       - name: Install Checkov
-        run: pip install checkov
+        # Pinned to the version validated against .checkov.yml (matches local dev).
+        run: pip install checkov==3.2.470
 
       - name: Scan Terraform
         run: checkov -d terraform --config-file .checkov.yml

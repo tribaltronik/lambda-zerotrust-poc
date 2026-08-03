@@ -11,14 +11,16 @@ from __future__ import annotations
 
 import os
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import boto3
-from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource, Table
 
 from shared.config import tracer
 from shared.exceptions import ItemNotFoundError
 from shared.models import ItemCreate, ItemUpdate, generate_item_id, now_iso
+
+if TYPE_CHECKING:
+    from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource, Table
 
 
 def get_table() -> Table:

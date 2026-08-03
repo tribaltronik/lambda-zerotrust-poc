@@ -24,3 +24,20 @@ skip-check:
   # github_actions role trust policy: real deploy uses OIDC Federated principal scoped by aud/sub.
   # Flagi when scanned with use_localstack=true (root principal for the local emulator only).
   - CKV_AWS_61
+  # --- New checks added by newer Checkov releases (validated against 3.2.470) ---
+  # S3 state bucket (terraform/bootstrap/): single-region PoC, AWS-managed AES256 SSE;
+  # a state backend has no cross-region replication / event-notification / lifecycle needs.
+  - CKV_AWS_18
+  - CKV_AWS_144
+  - CKV_AWS_145
+  - CKV2_AWS_61
+  - CKV2_AWS_62
+  # API GW: public REST API guarded by the Cognito authorizer + TLS at the edge;
+  # WAF and mutual-TLS client certs are out of PoC scope (spec.md §7).
+  - CKV2_AWS_29
+  - CKV2_AWS_51
+  # API GW stage logging level + request validation: access logs are already structured
+  # JSON; full request/response logging is off to avoid capturing sensitive payloads, and
+  # request validation is done in-handler with pydantic (spec.md §2).
+  - CKV2_AWS_4
+  - CKV2_AWS_53

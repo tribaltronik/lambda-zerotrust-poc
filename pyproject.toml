@@ -17,6 +17,7 @@ dev = [
     "ruff",
     "bandit",
     "pip-audit",
+    "mypy-boto3-dynamodb",
 ]
 
 [tool.ruff]
