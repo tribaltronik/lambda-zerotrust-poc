@@ -66,8 +66,8 @@ Each Lambda function has:
 ## Quick Start — Local Development
 
 ```bash
-# 1. Start Floci (local AWS emulator) and deploy infrastructure
-make up
+# 1. Start Floci (local AWS emulator), create remote state store, and deploy
+make floci-up && make tf-bootstrap && make up
 
 # 2. Verify everything works
 curl http://localhost:4566/restapis/<api_id>/dev/_user_request_/items \
@@ -77,11 +77,14 @@ curl http://localhost:4566/restapis/<api_id>/dev/_user_request_/items \
 make down
 ```
 
+> `make tf-bootstrap` is a one-time step that creates the S3 state bucket + DynamoDB
+> lock table (in `terraform/bootstrap/`). Subsequent runs only need `make up`.
+
 ### What `make up` Does
 
 1. Starts Floci Docker container (emulates AWS on port 4566)
 2. Runs `scripts/build-lambda.sh` to package Lambda functions with dependencies
-3. Runs `terraform init` and `terraform apply` against Floci
+3. Runs `terraform init` (S3 backend pointed at Floci) and `terraform apply`
 
 ### Useful Commands
 
@@ -89,6 +92,9 @@ make down
 make help              # Show all targets
 make floci-status      # Check Floci container
 make floci-health      # Health check
+make tf-bootstrap      # One-time: create state bucket + lock table
+make tf-init           # Init with Floci backend (default)
+make tf-init-aws       # Init with real AWS backend
 make build-lambdas     # Rebuild Lambda packages
 make tf-plan           # Preview Terraform changes
 make tf-apply          # Apply Terraform changes
@@ -106,8 +112,12 @@ make clean             # Remove caches and build artifacts
 export TF_VAR_github_org="your-org"
 export TF_VAR_github_repo="your-repo"
 
-# Initialize (uses S3 remote backend)
-cd terraform && terraform init
+# One-time: create the remote state bucket + lock table (run once, real AWS)
+terraform -chdir=terraform/bootstrap init
+terraform -chdir=terraform/bootstrap apply -auto-approve
+
+# Initialize (S3 remote backend on real AWS)
+cd terraform && terraform init -backend-config=backend-aws.tfvars
 
 # Plan
 terraform plan -var="use_localstack=false" -var-file=terraform.tfvars.example
@@ -116,19 +126,43 @@ terraform plan -var="use_localstack=false" -var-file=terraform.tfvars.example
 terraform apply -var="use_localstack=false" -var-file=terraform.tfvars.example
 ```
 
+> **Existing local state**: if you previously applied with the old local backend,
+> migrate it to S3 with `terraform init -backend-config=backend-aws.tfvars -migrate-state`
+> and remove the bootstrap resources from state
+> (`terraform state rm aws_s3_bucket.terraform_state aws_dynamodb_table.terraform_locks ...`)
+> since the `terraform/bootstrap/` module now owns them.
+
 ### GitHub Actions CI/CD
 
-The pipeline runs on every push/PR:
+The pipeline runs on every push/PR and blocks merge unless every check is green:
+
+| Workflow | Job (check name) | When | Blocks merge |
+|---|---|---|---|
+| `ci.yml` | `Lint & unit tests` (ruff + pytest) | PR + main | ✅ |
+| `security.yml` | `SAST (Bandit)` | PR + main | ✅ |
+| `security.yml` | `SCA (pip-audit)` | PR + main | ✅ |
+| `security.yml` | `IaC scan (Checkov)` | PR + main | ✅ |
+| `security.yml` | `Secrets scan (gitleaks)` — tree + git history | PR + main | ✅ |
+| `terraform-plan.yml` | `Terraform plan (dev)` — posts plan to the PR | PR | ✅ |
+| `terraform-apply.yml` | `Terraform apply (dev)` | main, gated by manual approval | ✅ |
 
 ```
-PR opened → lint + tests + security scans → terraform plan → review
+PR opened → lint + tests + SAST + SCA + IaC + secrets + terraform plan → review
      ↓
-merge to main → terraform apply (manual approval required)
+merge to main → terraform apply (requires manual approval on the `dev` environment)
 ```
 
-Required GitHub repository settings:
-- Environments: `dev` (auto-deploy) and `prod` (manual approval)
-- Branch protection: require status checks before merge
+Deployments use **GitHub OIDC** (`permissions: id-token: write`) to assume
+`${{ vars.AWS_ROLE_ARN }}` — no static AWS keys exist in GitHub. The `Terraform apply`
+job declares `environment: dev`, so it waits for a reviewer's approval.
+
+Required repository setup (one-time):
+- GitHub variable `AWS_ROLE_ARN` → ARN of the `lambda-zerotrust-poc-github-actions-dev`
+  IAM role created by `terraform/oidc.tf`
+- Environment `dev` with manual-approval reviewers + "protected branches" policy
+- Branch protection on `main`: run `scripts/branch-protection.sh` (after `gh auth login`)
+
+Dependabot is configured for Python, GitHub Actions, and Terraform updates.
 
 ## Project Structure
 
@@ -143,20 +177,27 @@ Required GitHub repository settings:
 │   └── shared/
 │       └── config.py          # Powertools singletons (Logger, Tracer, Metrics)
 ├── terraform/
+│   ├── bootstrap/            # One-time remote state bootstrap (bucket + lock table)
+│   ├── backend-aws.tfvars    # S3 backend config for real AWS / CI
+│   ├── backend-floci.tfvars  # S3 backend config pointed at Floci
 │   ├── modules/
-│   │   ├── api-gateway/       # REST API, Cognito authorizer, routes
+│   │   ├── api-gateway/       # REST API, Cognito authorizer, routes, access logs
 │   │   ├── lambda/            # Function + least-priv IAM role
-│   │   └── dynamodb/          # Table (on-demand, PK/SK)
+│   │   └── dynamodb/          # Table (on-demand, PK/SK, PITR)
 │   ├── provider.tf            # Floci-aware AWS provider
 │   ├── oidc.tf                # GitHub OIDC (skipped on Floci)
 │   ├── lambda.tf              # 5 Lambda module wirings
 │   └── ...
 ├── scripts/
-│   └── build-lambda.sh        # Build packages with pip dependencies
+│   ├── build-lambda.sh        # Build packages with pip dependencies
+│   └── branch-protection.sh   # Enforce branch protection via gh
 ├── tests/
 │   ├── unit/
 │   └── integration/
-├── .github/workflows/         # CI/CD pipelines
+├── .github/
+│   ├── workflows/             # ci, security, terraform-plan, terraform-apply
+│   └── dependabot.yml         # Dependency update automation
+├── .checkov.yml               # IaC scan baseline (documented skips)
 ├── docs/
 │   ├── spec.md                # Project specification
 │   ├── plan.md                # Implementation roadmap

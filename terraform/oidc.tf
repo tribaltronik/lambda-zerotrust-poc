@@ -23,7 +23,7 @@ resource "aws_iam_role" "github_actions" {
         Effect = "Allow"
         Principal = var.use_localstack ? {
           AWS = "arn:aws:iam::000000000000:root"
-        } : {
+          } : {
           Federated = aws_iam_openid_connect_provider.github[0].arn
         }
         Action = var.use_localstack ? "sts:AssumeRole" : "sts:AssumeRoleWithWebIdentity"

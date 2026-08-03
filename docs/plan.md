@@ -17,13 +17,13 @@
 - [x] Unit tests (pytest, moto for AWS mocks)
 
 ## Phase 3 — DevSecOps Pipeline (1-1.5 day)
-- [ ] GH Actions: lint (ruff) + unit tests
-- [ ] GH Actions: SAST (Bandit/Semgrep)
-- [ ] GH Actions: SCA (pip-audit) + Dependabot config
-- [ ] GH Actions: IaC scan (Checkov/tfsec)
-- [ ] GH Actions: secrets scan (gitleaks)
-- [ ] GH Actions: terraform plan (PR) → apply (main, manual approval env protection)
-- [ ] Branch protection: required checks before merge
+- [x] GH Actions: lint (ruff) + unit tests
+- [x] GH Actions: SAST (Bandit)
+- [x] GH Actions: SCA (pip-audit) + Dependabot config
+- [x] GH Actions: IaC scan (Checkov)
+- [x] GH Actions: secrets scan (gitleaks)
+- [x] GH Actions: terraform plan (PR) → apply (main, manual approval env protection)
+- [x] Branch protection: required checks before merge (script ready — run `scripts/branch-protection.sh` after `gh auth login`)
 
 ## Phase 4 — Zero-Trust Deploy Hardening (0.5 day)
 - [ ] Confirm no static keys anywhere (grep + gitleaks history scan)

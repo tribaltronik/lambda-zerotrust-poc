@@ -102,11 +102,34 @@ resource "aws_api_gateway_deployment" "this" {
   }
 }
 
+# CloudWatch log group for API Gateway access logs
+resource "aws_cloudwatch_log_group" "api_gw" {
+  name              = "/aws/apigateway/${var.api_name}"
+  retention_in_days = 365
+
+  tags = var.tags
+}
+
 # Stage
 resource "aws_api_gateway_stage" "this" {
-  deployment_id = aws_api_gateway_deployment.this.id
-  rest_api_id   = aws_api_gateway_rest_api.this.id
-  stage_name    = var.tags["Environment"] != null ? var.tags["Environment"] : "dev"
+  deployment_id        = aws_api_gateway_deployment.this.id
+  rest_api_id          = aws_api_gateway_rest_api.this.id
+  stage_name           = var.tags["Environment"] != null ? var.tags["Environment"] : "dev"
+  xray_tracing_enabled = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw.arn
+    format = jsonencode({
+      requestId       = "$context.requestId"
+      httpMethod      = "$context.httpMethod"
+      resourcePath    = "$context.resourcePath"
+      status          = "$context.status"
+      responseLatency = "$context.responseLatency"
+      sourceIp        = "$context.identity.sourceIp"
+      userAgent       = "$context.identity.userAgent"
+      cognitoIdentity = "$context.identity.cognitoIdentityId"
+    })
+  }
 
   tags = var.tags
 

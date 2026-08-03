@@ -18,6 +18,10 @@ resource "aws_dynamodb_table" "this" {
 
   range_key = var.sort_key
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
   dynamic "ttl" {
     for_each = var.enable_ttl ? [1] : []
     content {

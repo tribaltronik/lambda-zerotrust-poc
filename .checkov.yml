@@ -1,0 +1,26 @@
+# Checkov baseline configuration
+# Policy: fail the build on ANY check not explicitly skipped below.
+# Skips are intentional, documented PoC tradeoffs (see docs/spec.md "Out of Scope").
+
+quiet: true
+skip-check:
+  # Lambda: no VPC by design (spec.md §7: no VPC in scope; serverless-managed runtime)
+  - CKV_AWS_117
+  # Lambda: no SQS DLQ — async-invoke failures are the only DLQ use-case, API is sync (spec.md §7)
+  - CKV_AWS_116
+  # Lambda: no reserved concurrency — capacity/cold-start tradeoff deliberately left open (spec.md §6)
+  - CKV_AWS_115
+  # Lambda: code-signing profiles not part of the PoC pipeline
+  - CKV_AWS_272
+  # Lambda env vars + DynamoDB use AWS-managed KMS encryption (default), not a customer CMK — PoC cost tradeoff
+  - CKV_AWS_173
+  - CKV_AWS_119
+  # API GW caching adds cost; PoC is low-traffic (spec.md §6)
+  - CKV_AWS_120
+  # CloudWatch log groups use AWS-managed KMS encryption (default), not a customer CMK — PoC cost tradeoff
+  - CKV_AWS_158
+  # REST API create-before-destroy: forces full re-creation; deployment resource already handles rollbacks
+  - CKV_AWS_237
+  # github_actions role trust policy: real deploy uses OIDC Federated principal scoped by aud/sub.
+  # Flagi when scanned with use_localstack=true (root principal for the local emulator only).
+  - CKV_AWS_61

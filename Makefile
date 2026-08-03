@@ -9,6 +9,7 @@ SHELL := /bin/bash
 TF_DIR       := terraform
 TF           := terraform -chdir=$(TF_DIR)
 TFVARS       := -var-file=terraform.tfvars.example
+BACKEND_CONFIG ?= backend-floci.tfvars
 FLOCI_PORT   := 4566
 FLOCI_ENDPOINT := http://localhost:$(FLOCI_PORT)
 
@@ -21,7 +22,7 @@ export AWS_SECRET_ACCESS_KEY := test
 # ── Phony declarations ──────────────────────────────────
 .PHONY: help \
         floci-up floci-down floci-restart floci-status floci-health floci-env \
-        tf-init tf-plan tf-apply tf-destroy tf-validate tf-fmt \
+        tf-bootstrap tf-init tf-init-aws tf-plan tf-apply tf-destroy tf-validate tf-fmt \
         up down env build-lambdas \
         install-deps lint test clean
 
@@ -61,8 +62,16 @@ floci-env: ## Print AWS env vars for Floci
 # ──────────────────────────────────────────────────────────
 #  Terraform
 # ──────────────────────────────────────────────────────────
-tf-init: ## Initialize Terraform providers
-	cd $(TF_DIR) && terraform init -reconfigure
+tf-init: ## Initialize Terraform providers + remote backend (Floci)
+	$(TF) init -reconfigure -backend-config=$(BACKEND_CONFIG)
+
+tf-init-aws: ## Initialize Terraform with real AWS backend
+	$(TF) init -reconfigure -backend-config=backend-aws.tfvars
+
+tf-bootstrap: ## One-time: create remote state bucket + lock table (bootstrap module, Floci)
+	terraform -chdir=$(TF_DIR)/bootstrap init -reconfigure
+	TF_VAR_use_localstack=true TF_VAR_aws_endpoint=$(FLOCI_ENDPOINT) \
+		terraform -chdir=$(TF_DIR)/bootstrap apply -auto-approve
 
 tf-plan: ## Plan Terraform changes (Floci)
 	$(TF) plan $(TFVARS)

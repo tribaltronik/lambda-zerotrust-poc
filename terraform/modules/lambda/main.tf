@@ -16,8 +16,8 @@ resource "aws_lambda_function" "this" {
     variables = merge(
       var.environment_variables,
       {
-        POWERTOOLS_SERVICE_NAME    = var.function_name
-        LOG_LEVEL                  = "INFO"
+        POWERTOOLS_SERVICE_NAME      = var.function_name
+        LOG_LEVEL                    = "INFO"
         POWERTOOLS_METRICS_NAMESPACE = "LambdaZeroTrustPOC"
       }
     )
