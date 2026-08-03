@@ -54,7 +54,7 @@ jobs:
           TF_VAR_github_repo: ${{ github.event.repository.name }}
 
       - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tfplan
           path: terraform/tfplan
