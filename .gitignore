@@ -9,7 +9,7 @@ build/
 
 # Terraform
 *.tfstate
-*.tfstate.backup
+*.tfstate.*
 .terraform/
 .terraform.lock.hcl
 *.tfvars

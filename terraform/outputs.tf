@@ -1,6 +1,11 @@
 output "github_actions_role_arn" {
-  value       = aws_iam_role.github_actions.arn
-  description = "ARN of the GitHub Actions IAM role"
+  value       = { for k, r in aws_iam_role.github_actions : k => r.arn }
+  description = "Map of environment (dev, prod) to the ARN of its GitHub Actions IAM role"
+}
+
+output "github_actions_dev_role_arn" {
+  value       = aws_iam_role.github_actions["dev"].arn
+  description = "ARN of the dev GitHub Actions IAM role (repo-level AWS_ROLE_ARN variable)"
 }
 
 output "oidc_provider_arn" {

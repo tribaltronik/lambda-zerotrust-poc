@@ -44,9 +44,11 @@ No long-lived AWS credentials exist anywhere in this repo or in GitHub. The CI/C
 3. STS assumes a short-lived IAM role (scoped to the repo, branch, and environment)
 4. Terraform uses the temporary credentials to deploy
 
-Trust policy conditions restrict access to:
-- `repo:<org>/<repo>:*` — only this repository
-- `aud: sts.amazonaws.com` — only for STS
+There is one IAM role per environment (`terraform/oidc.tf`). Each role's trust
+policy conditions restrict access to:
+- `aud: sts.amazonaws.com` — OIDC tokens are only accepted by STS
+- dev role, `sub: repo:<org>/<repo>:ref:refs/heads/*` and `ref:refs/pull/*` — branch pushes + PRs
+- prod role, `sub: repo:<org>/<repo>:ref:refs/heads/main` — main only
 
 ### Least-Privilege IAM
 
@@ -132,6 +134,16 @@ terraform apply -var="use_localstack=false" -var-file=terraform.tfvars.example
 > (`terraform state rm aws_s3_bucket.terraform_state aws_dynamodb_table.terraform_locks ...`)
 > since the `terraform/bootstrap/` module now owns them.
 
+### IAM roles created by `terraform/oidc.tf`
+
+Two GitHub Actions IAM roles, one per environment:
+- `lambda-zerotrust-poc-github-actions-dev` — trusted for any branch push and any PR
+- `lambda-zerotrust-poc-github-actions-prod` — trusted for `main` only
+
+Both carry an identical least-privilege inline policy scoped to this stack's
+resources (`lambda-zerotrust-poc-*`) and its S3/DynamoDB remote-state backend,
+so CI can run `terraform plan`/`apply` with no long-lived credentials.
+
 ### GitHub Actions CI/CD
 
 The pipeline runs on every push/PR and blocks merge unless every check is green:
@@ -156,10 +168,23 @@ Deployments use **GitHub OIDC** (`permissions: id-token: write`) to assume
 `${{ vars.AWS_ROLE_ARN }}` — no static AWS keys exist in GitHub. The `Terraform apply`
 job declares `environment: dev`, so it waits for a reviewer's approval.
 
+`terraform/oidc.tf` creates one IAM role per environment (both with a
+least-privilege inline policy):
+- `lambda-zerotrust-poc-github-actions-dev` — branch-scoped trust
+  (`aud=sts.amazonaws.com`; `sub` matches `refs/heads/*` and `refs/pull/*`),
+  used by the PR plan job and the dev apply job
+- `lambda-zerotrust-poc-github-actions-prod` — trust scoped to `refs/heads/main`
+  **only**, for future prod deploys
+
 Required repository setup (one-time):
-- GitHub variable `AWS_ROLE_ARN` → ARN of the `lambda-zerotrust-poc-github-actions-dev`
-  IAM role created by `terraform/oidc.tf`
+- GitHub variable `AWS_ROLE_ARN` (repo level) → ARN of the `lambda-zerotrust-poc-github-actions-dev`
+  IAM role — used by the PR plan and dev apply jobs
 - Environment `dev` with manual-approval reviewers + "protected branches" policy
+- Environment `prod` with 2 required reviewers (both environments are configured
+  idempotently by `scripts/branch-protection.sh`)
+- A future prod deploy job can override `AWS_ROLE_ARN` with an **environment-scoped**
+  GitHub variable (on environment `prod`) pointing at the
+  `lambda-zerotrust-poc-github-actions-prod` role ARN
 - Branch protection on `main`: run `scripts/branch-protection.sh` (after `gh auth login`)
 
 Dependabot is configured for Python, GitHub Actions, and Terraform updates.

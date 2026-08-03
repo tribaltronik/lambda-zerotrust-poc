@@ -26,9 +26,9 @@
 - [x] Branch protection: required checks before merge (script ready — run `scripts/branch-protection.sh` after `gh auth login`)
 
 ## Phase 4 — Zero-Trust Deploy Hardening (0.5 day)
-- [ ] Confirm no static keys anywhere (grep + gitleaks history scan)
-- [ ] Document OIDC trust policy conditions (`sub`, `aud`)
-- [ ] Separate dev/prod IAM roles, environment protection rules in GH
+- [x] Confirm no static keys anywhere (grep + gitleaks history scan)
+- [x] Document OIDC trust policy conditions (`sub`, `aud`)
+- [x] Separate dev/prod IAM roles, environment protection rules in GH
 
 ## Phase 5 — Observability & Cost (0.5 day)
 - [ ] CloudWatch dashboard (errors, duration, throttles)

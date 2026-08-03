@@ -60,3 +60,17 @@ Each entry: **Date** — **Decision** — **Rationale** — **Tradeoffs**
 - **Decision**: Include `aws-xray-sdk` in Lambda deployment packages alongside `aws-lambda-powertools`.
 - **Rationale**: `from aws_lambda_powertools import Tracer` fails at cold-start with `No module named 'aws_xray_sdk'` unless the SDK is in the package.
 - **Tradeoffs**: Adds ~17MB per Lambda zip. Can reduce by using Powertools without Tracer or using Lambda Layers.
+
+---
+
+## Phase 4 — Zero-Trust Deploy Hardening
+
+### 2026-08-03 — Per-environment GitHub Actions roles with branch-scoped `sub` conditions
+- **Decision**: Split the single GitHub Actions IAM role into one role per environment (`lambda-zerotrust-poc-github-actions-dev` / `-prod`), each with its own OIDC trust policy. The dev role's `sub` matches `refs/heads/*` and `refs/pull/*`; the prod role's `sub` matches `refs/heads/main` only. Both keep `aud = sts.amazonaws.com` (StringEquals).
+- **Rationale**: PRs and feature branches must be able to `terraform plan` (and apply against dev) without gaining any path toward prod. Scoping `sub` per environment means a PR or a compromised non-main branch can only ever assume the dev role; only a push to `main` can assume the prod role, matching the `environment: dev`/future `environment: prod` workflow gates.
+- **Tradeoffs**: Two roles + two trust policies to maintain instead of one; `sub` patterns are duplicated per environment. `use_localstack=true` still skips OIDC entirely, so the conditions are only exercisable on real AWS.
+
+### 2026-08-03 — Least-privilege `terraform-deploy` policy on the GitHub Actions roles
+- **Decision**: Attach a shared inline policy named `terraform-deploy` to both GitHub Actions roles, scoped to this stack's resources (`lambda-zerotrust-poc-*`), its S3 remote-state bucket, and the DynamoDB lock table. Global-only actions (list/get-caller-identity calls) get `Resource = ["*"]` in separate statements.
+- **Rationale**: The roles exist so CI can run `terraform plan`/`apply` with no long-lived credentials; without a permissions policy the trust is unusable. Restricting actions/ARNs to what the state backend and stack resources need keeps the deploy surface least-privileged.
+- **Tradeoffs**: The policy must grow as the stack grows (every new resource type needs a scoped statement); a future cleanup pass or per-environment policy divergence would add maintenance.
