@@ -189,6 +189,18 @@ Required repository setup (one-time):
 
 Dependabot is configured for Python, GitHub Actions, and Terraform updates.
 
+## Observability & Cost
+
+- **Observability** — the stack ships structured Powertools logs, X-Ray tracing,
+  and a CloudWatch dashboard (`terraform/cloudwatch.tf`, name
+  `lambda-zerotrust-poc-dashboard`) covering Lambda invocations/errors/duration,
+  API Gateway errors/latency, DynamoDB throttling, and a cold-start log widget.
+  Measure cold starts per function with `scripts/measure-cold-start.sh`. See
+  [`docs/observability.md`](docs/observability.md) for the full picture and an
+  X-Ray trace-review walkthrough.
+- **Cost** — low-traffic cost estimate and the provisioned-concurrency tradeoff
+  are in [`docs/cost.md`](docs/cost.md).
+
 ## Project Structure
 
 ```

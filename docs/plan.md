@@ -31,9 +31,9 @@
 - [x] Separate dev/prod IAM roles, environment protection rules in GH
 
 ## Phase 5 — Observability & Cost (0.5 day)
-- [ ] CloudWatch dashboard (errors, duration, throttles)
-- [ ] X-Ray trace review, cold start measurement
-- [ ] Cost estimate doc (low-traffic assumptions)
+- [x] CloudWatch dashboard (errors, duration, throttles)
+- [x] X-Ray trace review, cold start measurement
+- [x] Cost estimate doc (low-traffic assumptions)
 
 ## Phase 6 — Polish for Portfolio (0.5 day)
 - [ ] README: architecture diagram, threat model, run instructions
