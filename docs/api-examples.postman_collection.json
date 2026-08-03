@@ -1,0 +1,126 @@
+{
+  "info": {
+    "name": "Lambda Zero-trust PoC",
+    "description": "CRUD examples for the Lambda Zero-trust PoC REST API (API Gateway → Lambda → DynamoDB, protected by a Cognito User Pool authorizer).\n\nSet `baseUrl` to the deployed API base URL and `token` to an Authorization value:\n\n- **Local (Floci)**: `baseUrl = http://localhost:4566/restapis/<api_id>/dev/_user_request_` (get `<api_id>` via `terraform output -raw api_id`); any token value works, e.g. `test`.\n- **Real AWS**: `baseUrl = <api_url>` (get via `terraform output -raw api_url`, e.g. `https://<api-id>.execute-api.<region>.amazonaws.com/dev`); set `token` to a Cognito ID token (mint one with `aws cognito-idp initiate-auth --client-id <client> --auth-flow USER_PASSWORD_AUTH --auth-parameters USERNAME=...,PASSWORD=...` and use the `AuthenticationResult.IdToken`).\n\nCreate an item first, then copy its `id` into the `itemId` variable.\n\nSee docs/api-examples.md for curl equivalents.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4566/restapis/<api_id>/dev/_user_request_"
+    },
+    {
+      "key": "token",
+      "value": "test"
+    },
+    {
+      "key": "itemId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create Item",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}/items",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Mechanical Keyboard\",\n  \"description\": \"75% hot-swappable, tactile switches\",\n  \"price\": 129.99\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "POST /items — create an item. Returns 201 with the stored record (including the generated `id`, `PK`/`SK` partition keys, and timestamps). Copy the returned `id` into the `itemId` collection variable for the Get/Update/Delete requests.\n\nAccepted fields: `name` (required, 1-255 chars), `description` (optional, <=1024), `price` (optional, >=0)."
+      }
+    },
+    {
+      "name": "List Items",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}/items",
+        "description": "GET /items — list all items. Returns 200 with `{\"items\": [...], \"count\": n}` (empty table: `{\"items\": [], \"count\": 0}`)."
+      }
+    },
+    {
+      "name": "Get Item",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}/items/{{itemId}}",
+        "description": "GET /items/{id} — get a single item. Returns 200 with the item record, or 404 with `{\"message\": \"Item not found: <id>\"}`."
+      }
+    },
+    {
+      "name": "Update Item",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}/items/{{itemId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Mechanical Keyboard (rev B)\",\n  \"price\": 139.99\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "PUT /items/{id} — partial update of an item. All fields optional (`name`, `description`, `price`). Returns 200 with the updated record (or the unchanged record for an empty body), or 404 if the item does not exist."
+      }
+    },
+    {
+      "name": "Delete Item",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{baseUrl}}/items/{{itemId}}",
+        "description": "DELETE /items/{id} — delete an item. Returns 204 with an empty body, or 404 if the item does not exist."
+      }
+    }
+  ]
+}

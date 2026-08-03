@@ -36,9 +36,9 @@
 - [x] Cost estimate doc (low-traffic assumptions)
 
 ## Phase 6 — Polish for Portfolio (0.5 day)
-- [ ] README: architecture diagram, threat model, run instructions
-- [ ] Postman/curl examples
-- [ ] "Lessons learned / tradeoffs" section (recruiter-facing)
+- [x] README: architecture diagram, threat model, run instructions
+- [x] Postman/curl examples
+- [x] "Lessons learned / tradeoffs" section (recruiter-facing)
 
 ## Milestones
 1. Infra + API deployed manually (end Phase 1)

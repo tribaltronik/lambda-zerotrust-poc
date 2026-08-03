@@ -56,7 +56,8 @@ Full `act` rehearsal requires Docker (may not be running). `actionlint` + runnin
 - 4 workflows: `ci.yml`, `security.yml` (sast/sca/iac/secrets), `terraform-plan.yml` (PR), `terraform-apply.yml` (main, `environment: dev`).
 - `terraform-plan.yml` deliberately has **no `paths` filter** so "Terraform plan (dev)" can be a required PR check.
 - Required PR checks (see `scripts/branch-protection.sh`): Lint & unit tests, SAST, SCA, IaC, Secrets, Terraform plan.
-- **Known gap (Phase 4 pending)**: `aws_iam_role.github_actions` in `oidc.tf` has a trust policy but **no permissions policy** — CI cannot deploy yet. Its `sub` condition currently allows any branch (`repo:org/repo:*`).
+- `oidc.tf` defines dev/prod GitHub Actions roles via `for_each`: dev `sub` = `repo:org/repo:ref:refs/heads/*` + `repo:org/repo:pull_request`, prod = `refs/heads/main`, `aud = sts.amazonaws.com`; each has a least-privilege `terraform-deploy` inline policy (state bucket/prefix + lock table + tagged resources). Role ARNs are exposed via `outputs.tf` (`github_actions_dev_role_arn`).
+- **Known gap (one-time manual bootstrap, Phase 4 done)**: the OIDC provider + roles exist in `oidc.tf` but the real-AWS provider still needs `TF_VAR_use_localstack=false terraform apply` and the repo `AWS_ROLE_ARN` variable set before CI can assume the dev role (see README → "One-time real-AWS setup").
 
 ## References
 

@@ -58,6 +58,15 @@ Each Lambda function has:
 - **AWSLambdaBasicExecutionRole** for CloudWatch Logs
 - **AWSXRayDaemonWriteAccess** for X-Ray tracing
 
+### Threat Model
+
+A full [threat model](docs/threat-model.md) walks the assets (DynamoDB table,
+remote state, IAM roles, Cognito pool, pipeline), the trust boundaries
+(client→API GW→Lambda→DynamoDB, developer→GitHub→AWS via OIDC), and a
+threat-by-threat matrix with the mitigation shipped for each — plus the
+documented residual risks (no WAF, no mTLS, no VPC, uncapped Lambda log
+retention, pending one-time OIDC bootstrap).
+
 ## Prerequisites
 
 - Docker (Floci runs as a container)
@@ -105,6 +114,12 @@ make test              # Run pytest
 make clean             # Remove caches and build artifacts
 ```
 
+### Examples
+
+Ready-to-run [curl + Postman examples](docs/api-examples.md) (including a
+[Postman collection](docs/api-examples.postman_collection.json)) cover
+authenticating against the Cognito user pool and hitting every route.
+
 ## Deploy to AWS
 
 > **Requires**: AWS account, GitHub repository, OIDC provider configured
@@ -133,6 +148,20 @@ terraform apply -var="use_localstack=false" -var-file=terraform.tfvars.example
 > and remove the bootstrap resources from state
 > (`terraform state rm aws_s3_bucket.terraform_state aws_dynamodb_table.terraform_locks ...`)
 > since the `terraform/bootstrap/` module now owns them.
+
+### One-time real-AWS setup
+
+1. Create the remote-state backend:
+   `terraform -chdir=terraform/bootstrap init && terraform -chdir=terraform/bootstrap apply -auto-approve`
+2. Create the OIDC provider + the dev/prod IAM roles:
+   `TF_VAR_use_localstack=false terraform apply` with the
+   `terraform.tfvars.example` vars (`github_org`/`github_repo`)
+3. Point CI at the dev role:
+   `gh variable set AWS_ROLE_ARN "<dev-role-arn>"` (or export `GH_TOKEN` first)
+4. Enforce branch protection + environment rules:
+   `scripts/branch-protection.sh`
+5. The CloudWatch dashboard (`lambda-zerotrust-poc-dashboard`) appears only on
+   real AWS — Floci (`use_localstack=true`) does not render it.
 
 ### IAM roles created by `terraform/oidc.tf`
 
@@ -223,6 +252,7 @@ Dependabot is configured for Python, GitHub Actions, and Terraform updates.
 │   │   └── dynamodb/          # Table (on-demand, PK/SK, PITR)
 │   ├── provider.tf            # Floci-aware AWS provider
 │   ├── oidc.tf                # GitHub OIDC (skipped on Floci)
+│   ├── cloudwatch.tf          # Dashboard + log metric filters
 │   ├── lambda.tf              # 5 Lambda module wirings
 │   └── ...
 ├── scripts/
@@ -238,6 +268,13 @@ Dependabot is configured for Python, GitHub Actions, and Terraform updates.
 ├── docs/
 │   ├── spec.md                # Project specification
 │   ├── plan.md                # Implementation roadmap
+│   ├── threat-model.md        # Assets, trust boundaries, threats, residual risks
+│   ├── api-examples.md        # curl + Postman examples
+│   ├── api-examples.postman_collection.json
+│   ├── lessons.md             # Recruiter-facing lessons learned & tradeoffs
+│   ├── cost.md                # Cost estimate & provisioned-concurrency tradeoff
+│   ├── observability.md       # Logging, X-Ray walkthrough, dashboard
+│   ├── oidc.md                # OIDC trust-policy deep dive
 │   ├── architecture.dot       # Graphviz source
 │   └── architecture.png       # Architecture diagram
 ├── decisions.md               # Architectural decision log
@@ -246,6 +283,9 @@ Dependabot is configured for Python, GitHub Actions, and Terraform updates.
 ```
 
 ## Tradeoffs & Lessons Learned
+
+A recruiter-friendly deep dive on the full set of tradeoffs and lessons learned
+lives in [`docs/lessons.md`](docs/lessons.md). Highlights below.
 
 ### Why Floci (not LocalStack)?
 LocalStack Community was sunset in March 2026 and now requires auth tokens. Floci is free, MIT-licensed, and wire-compatible with LocalStack's API.
